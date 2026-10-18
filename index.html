@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Calculateur de versement de pièces par rouleaux">
+  <title>Versement de pièces</title>
+  <style>
+    :root {
+      --yellow: #ffcc00;
+      --yellow-dark: #e6b800;
+      --ink: #1f2937;
+      --muted: #6b7280;
+      --line: #d7dce2;
+      --panel: #ffffff;
+      --bg: #f4f6f8;
+      --input: #fff8d6;
+      --input-border: #c89f00;
+      --danger: #b42318;
+      --danger-bg: #fff1f0;
+      --ok: #067647;
+      --ok-bg: #ecfdf3;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+      color: var(--ink);
+      background: var(--bg);
+    }
+
+    .topbar {
+      height: 5px;
+      background: var(--yellow);
+    }
+
+    main {
+      width: min(820px, calc(100% - 24px));
+      margin: 10px auto;
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid #e5e7eb;
+      border-radius: 6px;
+      box-shadow: 0 6px 18px rgba(31, 41, 55, 0.06);
+      overflow: hidden;
+    }
+
+    .header {
+      padding: 18px 20px 14px;
+      border-bottom: 1px solid #eceff2;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    h1 {
+      margin: 0 0 4px;
+      font-size: clamp(20px, 3vw, 27px);
+      line-height: 1.1;
+    }
+
+    .subtitle {
+      margin: 0;
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .badge {
+      white-space: nowrap;
+      padding: 6px 9px;
+      border-radius: 999px;
+      background: #fff7cc;
+      border: 1px solid #f0d45a;
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .table-wrap {
+      padding: 14px 20px 8px;
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      table-layout: fixed;
+      border-collapse: separate;
+      border-spacing: 0;
+      min-width: 640px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+
+    th, td {
+      padding: 8px 10px;
+      border-right: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+      text-align: right;
+      vertical-align: middle;
+    }
+
+    th:last-child, td:last-child { border-right: 0; }
+    tbody tr:last-child td { border-bottom: 0; }
+
+    thead th {
+      background: #f7f8fa;
+      color: #374151;
+      font-size: 11px;
+      letter-spacing: .02em;
+      font-weight: 750;
+    }
+
+    thead th:first-child, tbody td:first-child {
+      text-align: left;
+    }
+
+    .coin {
+      font-weight: 800;
+      font-size: 11px;
+    }
+
+    .coin-value {
+      display: block;
+      font-size: 16px;
+      line-height: 1.1;
+    }
+
+    .unit-weight {
+      display: block;
+      margin-top: 3px;
+      color: var(--muted);
+      font-size: 9px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .roll-input {
+      width: 100%;
+      max-width: 86px;
+      padding: 7px 8px;
+      text-align: right;
+      font: inherit;
+      font-weight: 800;
+      color: #111827;
+      background: var(--input);
+      border: 2px solid var(--input-border);
+      border-radius: 6px;
+      outline: none;
+      transition: box-shadow .15s ease, border-color .15s ease;
+    }
+
+    .roll-input:focus {
+      border-color: #927400;
+      box-shadow: 0 0 0 4px rgba(255, 204, 0, .22);
+    }
+
+    .readonly {
+      background: #fbfbfc;
+      color: #374151;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .summary {
+      padding: 10px 20px 16px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .metric {
+      border: 1px solid #e1e5ea;
+      border-radius: 6px;
+      padding: 10px 12px;
+      background: #fafbfc;
+    }
+
+    .metric-weight {
+      position: relative;
+      padding-right: 130px;
+    }
+
+    .weight-badge {
+      position: absolute;
+      top: 10px;
+      right: 12px;
+    }
+
+    .metric-label {
+      display: block;
+      color: var(--muted);
+      font-size: 11px;
+      margin-bottom: 3px;
+    }
+
+    .metric-value {
+      font-size: 20px;
+      font-weight: 850;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .weight-status {
+      grid-column: 1 / -1;
+      border-radius: 6px;
+      padding: 9px 12px;
+      font-size: 11px;
+      font-weight: 750;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      background: var(--ok-bg);
+      color: var(--ok);
+      border: 1px solid #abefc6;
+    }
+
+    .weight-status.over {
+      background: var(--danger-bg);
+      color: var(--danger);
+      border-color: #fecdca;
+    }
+
+    .actions {
+      padding: 0 20px 16px;
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+
+    button {
+      appearance: none;
+      border: 0;
+      border-radius: 9px;
+      padding: 8px 12px;
+      font: inherit;
+      font-weight: 750;
+      cursor: pointer;
+    }
+
+    .reset {
+      background: #eef0f3;
+      color: #374151;
+    }
+
+    .print {
+      background: var(--yellow);
+      color: #1f2937;
+    }
+
+    .reset:hover { background: #e2e5e9; }
+    .print:hover { background: var(--yellow-dark); }
+
+    .footnote {
+      padding: 0 20px 14px;
+      color: var(--muted);
+      font-size: 11px;
+      text-align: center;
+    }
+
+    @media (max-width: 700px) {
+      main {
+        width: min(100% - 18px, 980px);
+        margin: 10px auto;
+      }
+      .header, .table-wrap, .summary, .actions {
+        padding-left: 12px;
+        padding-right: 12px;
+      }
+      .header {
+        flex-direction: column;
+      }
+      .summary {
+        grid-template-columns: 1fr;
+      }
+      .weight-status {
+        grid-column: auto;
+      }
+    }
+
+    @media print {
+      body { background: white; }
+      .topbar, .actions, .footnote { display: none !important; }
+      main { width: 100%; margin: 0; }
+      .card { box-shadow: none; border: 0; }
+      .roll-input {
+        background: white;
+        border: 1px solid #999;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="topbar"></div>
+
+  <main>
+    <section class="card">
+      <div class="header">
+        <div>
+          <h1>Versement de pièces</h1>
+          <p class="subtitle">Encodez uniquement le nombre de rouleaux. Tous les autres champs sont calculés automatiquement.</p>
+        </div>
+      </div>
+
+      <form id="coinForm" autocomplete="off">
+        <div class="table-wrap">
+          <table aria-label="Calcul du versement de pièces">
+            <colgroup>
+              <col style="width: 18%">
+              <col style="width: 24%">
+              <col style="width: 17%">
+              <col style="width: 20%">
+              <col style="width: 21%">
+            </colgroup>
+            <thead>
+              <tr>
+                <th>Pièce</th>
+                <th>Nombre de rouleaux</th>
+                <th>Pièces</th>
+                <th>Poids</th>
+                <th>Valeur</th>
+              </tr>
+            </thead>
+            <tbody id="coinRows"></tbody>
+          </table>
+        </div>
+      </form>
+
+      <div class="summary">
+        <div class="metric metric-weight">
+          <span class="metric-label">Poids total</span>
+          <span class="metric-value" id="totalWeight">0,000 kg</span>
+          <span class="badge weight-badge">MAX 10 KG</span>
+        </div>
+        <div class="metric">
+          <span class="metric-label">Valeur totale</span>
+          <span class="metric-value" id="totalValue">0,00 €</span>
+        </div>
+        <div class="weight-status" id="weightStatus">
+          <span id="weightMessage">Poids conforme</span>
+          <strong id="weightRemaining">10,000 kg disponibles</strong>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="reset" type="button" id="resetBtn">Réinitialiser</button>
+        <button class="print" type="button" id="printBtn">Imprimer</button>
+      </div>
+
+      <div class="footnote">
+        Les données saisies restent uniquement dans votre navigateur et ne sont pas enregistrées.
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const coinData = [
+      { value: 2.00, label: "2,00 €", coinsPerRoll: 25, weightPerRoll: 0.213 },
+      { value: 1.00, label: "1,00 €", coinsPerRoll: 25, weightPerRoll: 0.188 },
+      { value: 0.50, label: "0,50 €", coinsPerRoll: 40, weightPerRoll: 0.313 },
+      { value: 0.20, label: "0,20 €", coinsPerRoll: 40, weightPerRoll: 0.231 },
+      { value: 0.10, label: "0,10 €", coinsPerRoll: 40, weightPerRoll: 0.163 },
+      { value: 0.05, label: "0,05 €", coinsPerRoll: 50, weightPerRoll: 0.196 },
+      { value: 0.02, label: "0,02 €", coinsPerRoll: 50, weightPerRoll: 0.153 },
+      { value: 0.01, label: "0,01 €", coinsPerRoll: 50, weightPerRoll: 0.116 }
+    ];
+
+    const rowsContainer = document.getElementById("coinRows");
+    const totalWeightEl = document.getElementById("totalWeight");
+    const totalValueEl = document.getElementById("totalValue");
+    const weightStatusEl = document.getElementById("weightStatus");
+    const weightMessageEl = document.getElementById("weightMessage");
+    const weightRemainingEl = document.getElementById("weightRemaining");
+
+    const euro = new Intl.NumberFormat("fr-BE", {
+      style: "currency",
+      currency: "EUR",
+      minimumFractionDigits: 2
+    });
+
+    const number0 = new Intl.NumberFormat("fr-BE", {
+      maximumFractionDigits: 0
+    });
+
+    const kg = new Intl.NumberFormat("fr-BE", {
+      minimumFractionDigits: 3,
+      maximumFractionDigits: 3
+    });
+
+    function buildRows() {
+      rowsContainer.innerHTML = coinData.map((coin, index) => `
+        <tr>
+          <td class="coin"><span class="coin-value">${coin.label}</span><span class="unit-weight">${Math.round(coin.weightPerRoll * 1000)}g /rouleau</span></td>
+          <td>
+            <input
+              class="roll-input"
+              id="roll-${index}"
+              type="number"
+              inputmode="numeric"
+              min="0"
+              step="1"
+              placeholder="0"
+              aria-label="Nombre de rouleaux de ${coin.label}"
+              autocomplete="off"
+            >
+          </td>
+          <td class="readonly" id="pieces-${index}">0</td>
+          <td class="readonly" id="weight-${index}">0,000 kg</td>
+          <td class="readonly" id="value-${index}">0,00 €</td>
+        </tr>
+      `).join("");
+
+      document.querySelectorAll(".roll-input").forEach(input => {
+        input.addEventListener("input", calculate);
+        input.addEventListener("keydown", event => {
+          if (["e", "E", "+", "-", ".", ","].includes(event.key)) {
+            event.preventDefault();
+          }
+        });
+      });
+    }
+
+    function getRollCount(index) {
+      const raw = document.getElementById(`roll-${index}`).value;
+      if (raw === "") return 0;
+      const value = Number(raw);
+      if (!Number.isFinite(value) || value < 0) return 0;
+      return Math.floor(value);
+    }
+
+    function calculate() {
+      let totalWeight = 0;
+      let totalValue = 0;
+
+      coinData.forEach((coin, index) => {
+        const rolls = getRollCount(index);
+        const pieces = rolls * coin.coinsPerRoll;
+        const weight = rolls * coin.weightPerRoll;
+        const value = pieces * coin.value;
+
+        totalWeight += weight;
+        totalValue += value;
+
+        document.getElementById(`pieces-${index}`).textContent = number0.format(pieces);
+        document.getElementById(`weight-${index}`).textContent = `${kg.format(weight)} kg`;
+        document.getElementById(`value-${index}`).textContent = euro.format(value);
+      });
+
+      totalWeightEl.textContent = `${kg.format(totalWeight)} kg`;
+      totalValueEl.textContent = euro.format(totalValue);
+
+      const remaining = 10 - totalWeight;
+      if (totalWeight > 10) {
+        weightStatusEl.classList.add("over");
+        weightMessageEl.textContent = "Attention : poids maximum dépassé";
+        weightRemainingEl.textContent = `${kg.format(Math.abs(remaining))} kg au-dessus du maximum`;
+      } else {
+        weightStatusEl.classList.remove("over");
+        weightMessageEl.textContent = "Poids conforme";
+        weightRemainingEl.textContent = `${kg.format(remaining)} kg disponibles`;
+      }
+    }
+
+    function resetAll() {
+      document.getElementById("coinForm").reset();
+      document.querySelectorAll(".roll-input").forEach(input => input.value = "");
+      calculate();
+    }
+
+    buildRows();
+    resetAll();
+
+    // Garantit une page vierge, même si le navigateur restaure un formulaire depuis son cache.
+    window.addEventListener("pageshow", resetAll);
+
+    document.getElementById("resetBtn").addEventListener("click", resetAll);
+    
+    document.getElementById("printBtn").addEventListener("click", () => {
+      const printRows = coinData.map((coin, index) => {
+        const rolls = getRollCount(index);
+        const pieces = rolls * coin.coinsPerRoll;
+        const weight = rolls * coin.weightPerRoll;
+        const value = pieces * coin.value;
+
+        return `
+          <tr>
+            <td>${coin.label}</td>
+            <td>${number0.format(rolls)}</td>
+            <td>${number0.format(pieces)}</td>
+            <td>${kg.format(weight)} kg</td>
+            <td>${euro.format(value)}</td>
+          </tr>
+        `;
+      }).join("");
+
+      let printFrame = document.getElementById("printFrame");
+      if (printFrame) printFrame.remove();
+
+      printFrame = document.createElement("iframe");
+      printFrame.id = "printFrame";
+      printFrame.style.position = "fixed";
+      printFrame.style.right = "0";
+      printFrame.style.bottom = "0";
+      printFrame.style.width = "1px";
+      printFrame.style.height = "1px";
+      printFrame.style.border = "0";
+      printFrame.style.opacity = "0";
+      printFrame.setAttribute("aria-hidden", "true");
+      document.body.appendChild(printFrame);
+
+      const doc = printFrame.contentWindow.document;
+      doc.open();
+      doc.write(`
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Versement de pièces</title>
+<style>
+  @page { size: A4 portrait; margin: 12mm; }
+  * { box-sizing: border-box; }
+  body {
+    font-family: Arial, Helvetica, sans-serif;
+    color: #1f2937;
+    margin: 0;
+    font-size: 12px;
+  }
+  h1 { margin: 0 0 6px; font-size: 22px; }
+  .sub { margin: 0 0 16px; color: #6b7280; font-size: 11px; }
+  table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+  th, td {
+    border: 1px solid #cfd5dc;
+    padding: 7px 8px;
+    text-align: right;
+  }
+  th { background: #f3f4f6; font-weight: 700; }
+  th:first-child, td:first-child { text-align: left; }
+  .summary { margin-top: 14px; display: flex; gap: 12px; }
+  .box { flex: 1; border: 1px solid #cfd5dc; padding: 10px 12px; }
+  .label { color: #6b7280; font-size: 11px; margin-bottom: 4px; }
+  .big { font-weight: 700; font-size: 18px; }
+  .limit { font-size: 10px; font-weight: 700; margin-left: 8px; }
+</style>
+</head>
+<body>
+  <h1>Versement de pièces</h1>
+  <p class="sub">Récapitulatif du calcul</p>
+  <table>
+    <thead>
+      <tr>
+        <th>Pièce</th>
+        <th>Nombre de rouleaux</th>
+        <th>Pièces</th>
+        <th>Poids</th>
+        <th>Valeur</th>
+      </tr>
+    </thead>
+    <tbody>${printRows}</tbody>
+  </table>
+  <div class="summary">
+    <div class="box">
+      <div class="label">Poids total <span class="limit">MAX 10 KG</span></div>
+      <div class="big">${totalWeightEl.textContent}</div>
+    </div>
+    <div class="box">
+      <div class="label">Valeur totale</div>
+      <div class="big">${totalValueEl.textContent}</div>
+    </div>
+  </div>
+</body>
+</html>`);
+      doc.close();
+
+      setTimeout(() => {
+        try {
+          printFrame.contentWindow.focus();
+          printFrame.contentWindow.print();
+        } catch (e) {
+          alert("L'impression directe est bloquée par OneDrive. Utilisez Ctrl+P (Windows) ou ⌘P (Mac).");
+        }
+      }, 300);
+    });
+  </script>
+</body>
+</html>
